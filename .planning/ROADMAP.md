@@ -68,7 +68,7 @@ This first roadmap takes Codex from interrupting automatic compaction to backgro
 2. Successful background compactions do not add interruption chatter to the transcript.
 3. Codex can keep multiple automatic background compactions in flight concurrently on different transcript ranges.
 4. The indicator stays accurate as background compactions start, complete, and fail.
-**Plans**: TBD during phase planning
+**Plans**: 4 plans
 
 ## Progress
 
@@ -81,4 +81,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 2. Safe Transcript Splicing | 3/3 | Complete | 2026-03-09 |
 | 3. Durable History And Surface Compatibility | 3/3 | Complete | 2026-03-09 |
 | 4. Failure Recovery And Blocking Guardrails | 4/4 | Complete | 2026-03-09 |
-| 5. Visible Rolling Background Compaction | 0/TBD | Not started | - |
+| 5. Visible Rolling Background Compaction | 0/4 | Not started | - |
