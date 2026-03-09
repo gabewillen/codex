@@ -57,19 +57,19 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| RUN-01 | Phase 1 - Background Trigger And Continued Turns | Planned |
-| RUN-02 | Phase 1 - Background Trigger And Continued Turns | Planned |
-| RUN-03 | Phase 5 - Visible Rolling Background Compaction | Planned |
-| HIST-01 | Phase 2 - Safe Transcript Splicing | Planned |
-| HIST-02 | Phase 2 - Safe Transcript Splicing | Planned |
-| HIST-03 | Phase 3 - Durable History And Surface Compatibility | Planned |
-| RECV-01 | Phase 4 - Failure Recovery And Blocking Guardrails | Planned |
-| RECV-02 | Phase 4 - Failure Recovery And Blocking Guardrails | Planned |
-| VIS-01 | Phase 5 - Visible Rolling Background Compaction | Planned |
-| VIS-02 | Phase 5 - Visible Rolling Background Compaction | Planned |
-| COMP-01 | Phase 4 - Failure Recovery And Blocking Guardrails | Planned |
-| COMP-02 | Phase 4 - Failure Recovery And Blocking Guardrails | Planned |
-| COMP-03 | Phase 3 - Durable History And Surface Compatibility | Planned |
+| RUN-01 | Phase 6 - Verification And Traceability Closure | Pending |
+| RUN-02 | Phase 6 - Verification And Traceability Closure | Pending |
+| RUN-03 | Phase 6 - Verification And Traceability Closure | Pending |
+| HIST-01 | Phase 6 - Verification And Traceability Closure | Pending |
+| HIST-02 | Phase 6 - Verification And Traceability Closure | Pending |
+| HIST-03 | Phase 6 - Verification And Traceability Closure | Pending |
+| RECV-01 | Phase 6 - Verification And Traceability Closure | Pending |
+| RECV-02 | Phase 6 - Verification And Traceability Closure | Pending |
+| VIS-01 | Phase 6 - Verification And Traceability Closure | Pending |
+| VIS-02 | Phase 6 - Verification And Traceability Closure | Pending |
+| COMP-01 | Phase 6 - Verification And Traceability Closure | Pending |
+| COMP-02 | Phase 6 - Verification And Traceability Closure | Pending |
+| COMP-03 | Phase 6 - Verification And Traceability Closure | Pending |
 
 **Coverage:**
 - v1 requirements: 13 total
@@ -78,4 +78,4 @@
 
 ---
 *Requirements defined: 2026-03-08*
-*Last updated: 2026-03-09 after initial roadmap creation*
+*Last updated: 2026-03-09 after milestone gap planning*

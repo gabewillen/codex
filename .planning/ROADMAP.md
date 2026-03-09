@@ -2,7 +2,7 @@
 
 ## Overview
 
-This first roadmap takes Codex from interrupting automatic compaction to background rolling auto-compaction for long-running agent work. The sequence follows the v1 requirements directly: start with non-blocking runtime behavior, make transcript splicing safe, preserve durable cross-surface history, keep failure recovery and blocking compatibility intact, then expose visible rolling compaction with concurrent background jobs.
+This first roadmap takes Codex from interrupting automatic compaction to background rolling auto-compaction for long-running agent work. The sequence follows the v1 requirements directly: start with non-blocking runtime behavior, make transcript splicing safe, preserve durable cross-surface history, keep failure recovery and blocking compatibility intact, expose visible rolling compaction with concurrent background jobs, then formally close the milestone with verification and traceability backfill.
 
 ## Phases
 
@@ -15,6 +15,7 @@ This first roadmap takes Codex from interrupting automatic compaction to backgro
 - [x] **Phase 3: Durable History And Surface Compatibility** - Keep post-compaction history consistent across persistence, replay, and existing compaction surfaces.
 - [x] **Phase 4: Failure Recovery And Blocking Guardrails** - Recover failed background jobs through the existing blocking path without changing manual or pre-turn semantics.
 - [x] **Phase 5: Visible Rolling Background Compaction** - Show lightweight background compaction status and support multiple concurrent auto-compactions.
+- [ ] **Phase 6: Verification And Traceability Closure** - Backfill milestone verification artifacts, close remaining validation debt, and rerun the milestone audit cleanly.
 
 ## Phase Details
 
@@ -70,10 +71,22 @@ This first roadmap takes Codex from interrupting automatic compaction to backgro
 4. The indicator stays accurate as background compactions start, complete, and fail.
 **Plans**: 4 plans
 
+### Phase 6: Verification And Traceability Closure
+**Goal**: Codex formally closes the shipped milestone by backfilling missing verification artifacts, resolving remaining validation debt, updating requirement traceability, and rerunning the milestone audit.
+**Depends on**: Phase 5
+**Requirements**: [RUN-01, RUN-02, RUN-03, HIST-01, HIST-02, HIST-03, RECV-01, RECV-02, VIS-01, VIS-02, COMP-01, COMP-02, COMP-03]
+**Gap Closure**: Closes the v1.0 audit's verification and traceability gaps without reopening shipped product behavior.
+**Success Criteria** (what must be TRUE):
+1. Every completed v1 phase has a `VERIFICATION.md` artifact that cites the shipped evidence needed for milestone closure.
+2. Phase 2 and Phase 4 validation artifacts are promoted out of partial status so Nyquist coverage is milestone-ready.
+3. `REQUIREMENTS.md` accurately reflects closure ownership and verification-ready status for all 13 v1 requirements.
+4. Re-running `$gsd-audit-milestone` passes without requirement, integration, or flow gaps.
+**Plans**: TBD during phase planning
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -82,3 +95,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 3. Durable History And Surface Compatibility | 3/3 | Complete | 2026-03-09 |
 | 4. Failure Recovery And Blocking Guardrails | 4/4 | Complete | 2026-03-09 |
 | 5. Visible Rolling Background Compaction | 4/4 | Complete   | 2026-03-09 |
+| 6. Verification And Traceability Closure | 0/0 | Pending | — |
