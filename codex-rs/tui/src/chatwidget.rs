@@ -1562,6 +1562,7 @@ impl ChatWidget {
         self.pending_status_indicator_restore = false;
         self.agent_turn_running = false;
         self.turn_sleep_inhibitor.set_turn_running(false);
+        self.bottom_pane.clear_context_compaction_activity();
         self.update_task_running_state();
         self.running_commands.clear();
         self.suppressed_exec_calls.clear();
@@ -1860,6 +1861,7 @@ impl ChatWidget {
         // Reset running state and clear streaming buffers.
         self.agent_turn_running = false;
         self.turn_sleep_inhibitor.set_turn_running(false);
+        self.bottom_pane.clear_context_compaction_activity();
         self.update_task_running_state();
         self.running_commands.clear();
         self.suppressed_exec_calls.clear();
@@ -4870,7 +4872,9 @@ impl ChatWidget {
                 self.on_entered_review_mode(review_request, from_replay)
             }
             EventMsg::ExitedReviewMode(review) => self.on_exited_review_mode(review),
-            EventMsg::ContextCompacted(_) => self.on_agent_message("Context compacted".to_owned()),
+            EventMsg::ContextCompacted(_) => {
+                self.bottom_pane.clear_context_compaction_activity();
+            }
             EventMsg::CollabAgentSpawnBegin(_) => {}
             EventMsg::CollabAgentSpawnEnd(ev) => self.on_collab_event(multi_agents::spawn_end(ev)),
             EventMsg::CollabAgentInteractionBegin(_) => {}
@@ -4897,12 +4901,21 @@ impl ChatWidget {
                 }
             }
             EventMsg::RawResponseItem(_)
-            | EventMsg::ItemStarted(_)
             | EventMsg::AgentMessageContentDelta(_)
             | EventMsg::ReasoningContentDelta(_)
             | EventMsg::ReasoningRawContentDelta(_)
             | EventMsg::DynamicToolCallRequest(_)
             | EventMsg::DynamicToolCallResponse(_) => {}
+            EventMsg::ItemStarted(event) => {
+                if !from_replay
+                    && matches!(
+                        event.item,
+                        codex_protocol::items::TurnItem::ContextCompaction(_)
+                    )
+                {
+                    self.bottom_pane.increment_context_compaction_activity();
+                }
+            }
             EventMsg::RealtimeConversationStarted(ev) => {
                 if !from_replay {
                     self.on_realtime_conversation_started(ev);
@@ -4958,6 +4971,9 @@ impl ChatWidget {
                 }
                 if let codex_protocol::items::TurnItem::Plan(plan_item) = &item {
                     self.on_plan_item_completed(plan_item.text.clone());
+                }
+                if matches!(&item, codex_protocol::items::TurnItem::ContextCompaction(_)) {
+                    self.bottom_pane.decrement_context_compaction_activity();
                 }
                 if let codex_protocol::items::TurnItem::AgentMessage(item) = item {
                     self.on_agent_message_item_completed(item);

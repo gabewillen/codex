@@ -547,6 +547,10 @@ pub(crate) fn render_footer_hint_items(area: Rect, buf: &mut Buffer, items: &[(S
     footer_hint_items_line(items).render(inset_footer_hint_area(area), buf);
 }
 
+pub(crate) fn compaction_indicator_line() -> Line<'static> {
+    Line::from("Compacting context...").dim()
+}
+
 /// Map `FooterProps` to footer lines without width-based collapse.
 ///
 /// This is the canonical FooterMode-to-text mapping. It powers transient,

@@ -1117,6 +1117,29 @@ impl BottomPane {
             self.request_redraw();
         }
     }
+
+    pub(crate) fn increment_context_compaction_activity(&mut self) {
+        if self.composer.increment_context_compaction_activity() {
+            self.request_redraw();
+        }
+    }
+
+    pub(crate) fn decrement_context_compaction_activity(&mut self) {
+        if self.composer.decrement_context_compaction_activity() {
+            self.request_redraw();
+        }
+    }
+
+    pub(crate) fn clear_context_compaction_activity(&mut self) {
+        if self.composer.clear_context_compaction_activity() {
+            self.request_redraw();
+        }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn context_compaction_active(&self) -> bool {
+        self.composer.context_compaction_active()
+    }
 }
 
 #[cfg(not(target_os = "linux"))]

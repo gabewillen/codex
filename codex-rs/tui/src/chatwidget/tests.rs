@@ -43,6 +43,7 @@ use codex_protocol::config_types::ServiceTier;
 use codex_protocol::config_types::Settings;
 use codex_protocol::items::AgentMessageContent;
 use codex_protocol::items::AgentMessageItem;
+use codex_protocol::items::ContextCompactionItem;
 use codex_protocol::items::PlanItem;
 use codex_protocol::items::TurnItem;
 use codex_protocol::items::UserMessageItem;
@@ -61,6 +62,7 @@ use codex_protocol::protocol::AgentReasoningEvent;
 use codex_protocol::protocol::ApplyPatchApprovalRequestEvent;
 use codex_protocol::protocol::BackgroundEventEvent;
 use codex_protocol::protocol::CodexErrorInfo;
+use codex_protocol::protocol::ContextCompactedEvent;
 use codex_protocol::protocol::CreditsSnapshot;
 use codex_protocol::protocol::Event;
 use codex_protocol::protocol::EventMsg;
@@ -74,6 +76,7 @@ use codex_protocol::protocol::ExitedReviewModeEvent;
 use codex_protocol::protocol::FileChange;
 use codex_protocol::protocol::ImageGenerationEndEvent;
 use codex_protocol::protocol::ItemCompletedEvent;
+use codex_protocol::protocol::ItemStartedEvent;
 use codex_protocol::protocol::McpStartupCompleteEvent;
 use codex_protocol::protocol::McpStartupStatus;
 use codex_protocol::protocol::McpStartupUpdateEvent;
@@ -9265,6 +9268,117 @@ async fn warning_event_adds_warning_history_cell() {
         rendered.contains("test warning message"),
         "warning cell missing content: {rendered}"
     );
+}
+
+#[tokio::test]
+async fn context_compacted_event_clears_footer_indicator_without_history_chatter() {
+    let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(None).await;
+    chat.bottom_pane.increment_context_compaction_activity();
+
+    chat.handle_codex_event(Event {
+        id: "compact-finished".into(),
+        msg: EventMsg::ContextCompacted(ContextCompactedEvent {}),
+    });
+
+    assert!(drain_insert_history(&mut rx).is_empty());
+    assert!(!chat.bottom_pane.context_compaction_active());
+}
+
+#[tokio::test]
+async fn context_compaction_item_lifecycle_toggles_footer_indicator() {
+    use ratatui::Terminal;
+
+    let (mut chat, _rx, _op_rx) = make_chatwidget_manual(None).await;
+    chat.show_welcome_banner = false;
+    let item = TurnItem::ContextCompaction(ContextCompactionItem {
+        id: "compact-1".to_string(),
+    });
+
+    chat.handle_codex_event(Event {
+        id: "compact-start".into(),
+        msg: EventMsg::ItemStarted(ItemStartedEvent {
+            thread_id: ThreadId::new(),
+            turn_id: "turn-1".to_string(),
+            item: item.clone(),
+        }),
+    });
+
+    assert!(chat.bottom_pane.context_compaction_active());
+
+    let width = 80;
+    let height = chat.desired_height(width);
+    let mut terminal = Terminal::new(VT100Backend::new(width, height)).expect("create terminal");
+    terminal
+        .draw(|f| chat.render(f.area(), f.buffer_mut()))
+        .expect("draw compaction footer");
+    let rendered = terminal.backend().vt100().screen().contents();
+    assert!(
+        rendered.contains("Compacting context..."),
+        "expected footer indicator while compaction is active, got:\n{rendered}"
+    );
+
+    chat.handle_codex_event(Event {
+        id: "compact-done".into(),
+        msg: EventMsg::ItemCompleted(ItemCompletedEvent {
+            thread_id: ThreadId::new(),
+            turn_id: "turn-1".to_string(),
+            item,
+        }),
+    });
+
+    assert!(!chat.bottom_pane.context_compaction_active());
+}
+
+#[tokio::test]
+async fn overlapping_context_compaction_items_keep_footer_indicator_active_until_last_completion() {
+    let (mut chat, _rx, _op_rx) = make_chatwidget_manual(None).await;
+    let first_item = TurnItem::ContextCompaction(ContextCompactionItem {
+        id: "compact-1".to_string(),
+    });
+    let second_item = TurnItem::ContextCompaction(ContextCompactionItem {
+        id: "compact-2".to_string(),
+    });
+
+    for (event_id, item) in [
+        ("compact-start-1", first_item.clone()),
+        ("compact-start-2", second_item.clone()),
+    ] {
+        chat.handle_codex_event(Event {
+            id: event_id.into(),
+            msg: EventMsg::ItemStarted(ItemStartedEvent {
+                thread_id: ThreadId::new(),
+                turn_id: "turn-1".to_string(),
+                item,
+            }),
+        });
+    }
+
+    assert!(chat.bottom_pane.context_compaction_active());
+
+    chat.handle_codex_event(Event {
+        id: "compact-done-1".into(),
+        msg: EventMsg::ItemCompleted(ItemCompletedEvent {
+            thread_id: ThreadId::new(),
+            turn_id: "turn-1".to_string(),
+            item: first_item,
+        }),
+    });
+
+    assert!(
+        chat.bottom_pane.context_compaction_active(),
+        "a second overlapping compaction should keep the footer indicator active"
+    );
+
+    chat.handle_codex_event(Event {
+        id: "compact-done-2".into(),
+        msg: EventMsg::ItemCompleted(ItemCompletedEvent {
+            thread_id: ThreadId::new(),
+            turn_id: "turn-1".to_string(),
+            item: second_item,
+        }),
+    });
+
+    assert!(!chat.bottom_pane.context_compaction_active());
 }
 
 #[tokio::test]
