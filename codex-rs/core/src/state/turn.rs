@@ -149,7 +149,9 @@ impl ActiveTurn {
     pub(crate) fn background_auto_compaction_failure_notify(&self) -> Option<Arc<Notify>> {
         self.background_auto_compaction
             .as_ref()
-            .map(|background_auto_compaction| Arc::clone(&background_auto_compaction.failure_notify))
+            .map(|background_auto_compaction| {
+                Arc::clone(&background_auto_compaction.failure_notify)
+            })
     }
 
     pub(crate) fn take_completed_background_auto_compaction(

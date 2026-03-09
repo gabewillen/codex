@@ -849,11 +849,8 @@ async fn failed_background_auto_compact_falls_back_to_blocking_compaction_once()
         ev_assistant_message("m3", FINAL_REPLY),
         ev_completed_with_tokens("r3", 50),
     ]);
-    let failed_compact_turn = sse_failed(
-        "resp-fail-1",
-        "server_error",
-        "background compact failed",
-    );
+    let failed_compact_turn =
+        sse_failed("resp-fail-1", "server_error", "background compact failed");
     let fallback_compact_turn = sse(vec![
         ev_assistant_message("m4", &auto_summary(AUTO_SUMMARY_TEXT)),
         ev_completed_with_tokens("r4", 10),
