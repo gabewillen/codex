@@ -5,10 +5,12 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::sync::Notify;
+use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
 use tokio_util::task::AbortOnDropHandle;
 
 use codex_protocol::dynamic_tools::DynamicToolResponse;
+use codex_protocol::items::ContextCompactionItem;
 use codex_protocol::models::ResponseInputItem;
 use codex_protocol::request_user_input::RequestUserInputResponse;
 use codex_rmcp_client::ElicitationResponse;
@@ -16,6 +18,8 @@ use rmcp::model::RequestId;
 use tokio::sync::oneshot;
 
 use crate::codex::TurnContext;
+use crate::compact::LocalCompactResult;
+use crate::compact_remote::RemoteCompactionResult;
 use crate::protocol::ReviewDecision;
 use crate::protocol::TokenUsage;
 use crate::tasks::SessionTask;
@@ -24,6 +28,8 @@ use crate::tasks::SessionTask;
 pub(crate) struct ActiveTurn {
     pub(crate) tasks: IndexMap<String, RunningTask>,
     pub(crate) turn_state: Arc<Mutex<TurnState>>,
+    background_auto_compaction: Option<BackgroundAutoCompaction>,
+    completed_background_auto_compaction: Option<CompletedBackgroundAutoCompaction>,
 }
 
 impl Default for ActiveTurn {
@@ -31,6 +37,8 @@ impl Default for ActiveTurn {
         Self {
             tasks: IndexMap::new(),
             turn_state: Arc::new(Mutex::new(TurnState::default())),
+            background_auto_compaction: None,
+            completed_background_auto_compaction: None,
         }
     }
 }
@@ -53,6 +61,31 @@ pub(crate) struct RunningTask {
     pub(crate) _timer: Option<codex_otel::Timer>,
 }
 
+pub(crate) struct BackgroundAutoCompaction {
+    pub(crate) snapshot_marker: String,
+    pub(crate) compaction_item: ContextCompactionItem,
+    pub(crate) cancellation_token: CancellationToken,
+    pub(crate) handle: JoinHandle<()>,
+}
+
+#[derive(Debug)]
+pub(crate) enum BackgroundAutoCompactionResult {
+    Local(LocalCompactResult),
+    Remote(RemoteCompactionResult),
+}
+
+#[derive(Debug)]
+pub(crate) enum BackgroundAutoCompactionOutcome {
+    Succeeded(Box<BackgroundAutoCompactionResult>),
+    Failed(String),
+}
+
+pub(crate) struct CompletedBackgroundAutoCompaction {
+    pub(crate) snapshot_marker: String,
+    pub(crate) compaction_item: ContextCompactionItem,
+    pub(crate) outcome: BackgroundAutoCompactionOutcome,
+}
+
 impl ActiveTurn {
     pub(crate) fn add_task(&mut self, task: RunningTask) {
         let sub_id = task.turn_context.sub_id.clone();
@@ -66,6 +99,73 @@ impl ActiveTurn {
 
     pub(crate) fn drain_tasks(&mut self) -> Vec<RunningTask> {
         self.tasks.drain(..).map(|(_, task)| task).collect()
+    }
+
+    pub(crate) fn can_start_background_auto_compaction(&self) -> bool {
+        self.background_auto_compaction.is_none()
+            && self.completed_background_auto_compaction.is_none()
+    }
+
+    pub(crate) fn set_background_auto_compaction(
+        &mut self,
+        background_auto_compaction: BackgroundAutoCompaction,
+    ) -> bool {
+        if !self.can_start_background_auto_compaction() {
+            return false;
+        }
+        self.background_auto_compaction = Some(background_auto_compaction);
+        true
+    }
+
+    pub(crate) fn finish_background_auto_compaction(
+        &mut self,
+        snapshot_marker: &str,
+        outcome: BackgroundAutoCompactionOutcome,
+    ) -> Option<ContextCompactionItem> {
+        let background_auto_compaction = self.background_auto_compaction.take()?;
+        if background_auto_compaction.snapshot_marker != snapshot_marker {
+            self.background_auto_compaction = Some(background_auto_compaction);
+            return None;
+        }
+
+        let compaction_item = background_auto_compaction.compaction_item;
+        self.completed_background_auto_compaction = Some(CompletedBackgroundAutoCompaction {
+            snapshot_marker: snapshot_marker.to_string(),
+            compaction_item: compaction_item.clone(),
+            outcome,
+        });
+        Some(compaction_item)
+    }
+
+    pub(crate) fn take_background_auto_compaction(&mut self) -> Option<BackgroundAutoCompaction> {
+        self.background_auto_compaction.take()
+    }
+
+    pub(crate) fn clear_completed_background_auto_compaction(&mut self) {
+        let Some(CompletedBackgroundAutoCompaction {
+            snapshot_marker,
+            compaction_item,
+            outcome,
+        }) = self.completed_background_auto_compaction.take()
+        else {
+            return;
+        };
+
+        let _ = snapshot_marker;
+        let _ = compaction_item;
+        match outcome {
+            BackgroundAutoCompactionOutcome::Succeeded(result) => match *result {
+                BackgroundAutoCompactionResult::Local(result) => {
+                    let _ = result;
+                }
+                BackgroundAutoCompactionResult::Remote(result) => {
+                    let _ = result;
+                }
+            },
+            BackgroundAutoCompactionOutcome::Failed(message) => {
+                let _ = message;
+            }
+        }
     }
 }
 
