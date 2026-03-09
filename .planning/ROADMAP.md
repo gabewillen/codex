@@ -26,7 +26,7 @@ This first roadmap takes Codex from interrupting automatic compaction to backgro
 1. User can keep a long-running agent turn active when automatic compaction is triggered.
 2. User continues seeing agent progress while background compaction is in flight.
 3. Automatic mid-turn compaction starts without requiring any new user action.
-**Plans**: TBD during phase planning
+**Plans**: 4 plans
 
 ### Phase 2: Safe Transcript Splicing
 **Goal**: Completed background compactions replace only the intended transcript slice and preserve newer history in order.
@@ -77,7 +77,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Background Trigger And Continued Turns | 0/TBD | Not started | - |
+| 1. Background Trigger And Continued Turns | 2/4 | In progress | - |
 | 2. Safe Transcript Splicing | 0/TBD | Not started | - |
 | 3. Durable History And Surface Compatibility | 0/TBD | Not started | - |
 | 4. Failure Recovery And Blocking Guardrails | 0/TBD | Not started | - |
