@@ -393,6 +393,7 @@ Progress is emitted as standard `turn/*` and `item/*` notifications on the same 
 - `item/completed` with the same `contextCompaction` item id
 
 While compaction is running, the thread is effectively in a turn so clients should surface progress UI based on the notifications.
+Although the RPC responds immediately, compaction itself still occupies the thread as a blocking turn; wait for the matching `turn/completed` before starting dependent turn work on that thread.
 
 ```json
 { "method": "thread/compact/start", "id": 25, "params": { "threadId": "thr_b" } }

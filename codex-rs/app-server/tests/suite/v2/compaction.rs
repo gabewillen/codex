@@ -50,6 +50,7 @@ const INVALID_REQUEST_ERROR_CODE: i64 = -32600;
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn auto_compaction_local_emits_started_and_completed_items() -> Result<()> {
     skip_if_no_network!(Ok(()));
+    const LOCAL_AUTO_COMPACTION_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
 
     let server = responses::start_mock_server().await;
     let sse1 = responses::sse(vec![
@@ -89,8 +90,30 @@ async fn auto_compaction_local_emits_started_and_completed_items() -> Result<()>
         send_turn_and_wait(&mut mcp, &thread_id, message).await?;
     }
 
-    let started = wait_for_context_compaction_started(&mut mcp).await?;
-    let completed = wait_for_context_compaction_completed(&mut mcp).await?;
+    let started = loop {
+        let notification: JSONRPCNotification = timeout(
+            LOCAL_AUTO_COMPACTION_TIMEOUT,
+            mcp.read_stream_until_notification_message("item/started"),
+        )
+        .await??;
+        let started: ItemStartedNotification =
+            serde_json::from_value(notification.params.clone().expect("item/started params"))?;
+        if let ThreadItem::ContextCompaction { .. } = started.item {
+            break started;
+        }
+    };
+    let completed = loop {
+        let notification: JSONRPCNotification = timeout(
+            LOCAL_AUTO_COMPACTION_TIMEOUT,
+            mcp.read_stream_until_notification_message("item/completed"),
+        )
+        .await??;
+        let completed: ItemCompletedNotification =
+            serde_json::from_value(notification.params.clone().expect("item/completed params"))?;
+        if let ThreadItem::ContextCompaction { .. } = completed.item {
+            break completed;
+        }
+    };
 
     let ThreadItem::ContextCompaction { id: started_id } = started.item else {
         unreachable!("started item should be context compaction");
@@ -98,9 +121,9 @@ async fn auto_compaction_local_emits_started_and_completed_items() -> Result<()>
     let ThreadItem::ContextCompaction { id: completed_id } = completed.item else {
         unreachable!("completed item should be context compaction");
     };
-
     assert_eq!(started.thread_id, thread_id);
     assert_eq!(completed.thread_id, thread_id);
+    assert_eq!(started.turn_id, completed.turn_id);
     assert_eq!(started_id, completed_id);
 
     Ok(())
