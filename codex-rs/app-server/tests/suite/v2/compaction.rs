@@ -86,9 +86,9 @@ async fn auto_compaction_local_emits_started_and_completed_items() -> Result<()>
     timeout(DEFAULT_READ_TIMEOUT, mcp.initialize()).await??;
 
     let thread_id = start_thread(&mut mcp).await?;
-    for message in ["first", "second", "third"] {
-        send_turn_and_wait(&mut mcp, &thread_id, message).await?;
-    }
+    send_turn_and_wait(&mut mcp, &thread_id, "first").await?;
+    send_turn_and_wait(&mut mcp, &thread_id, "second").await?;
+    send_turn_and_wait(&mut mcp, &thread_id, "third").await?;
 
     let started = loop {
         let notification: JSONRPCNotification = timeout(
@@ -197,9 +197,9 @@ async fn auto_compaction_remote_emits_started_and_completed_items() -> Result<()
     timeout(DEFAULT_READ_TIMEOUT, mcp.initialize()).await??;
 
     let thread_id = start_thread(&mut mcp).await?;
-    for message in ["first", "second", "third"] {
-        send_turn_and_wait(&mut mcp, &thread_id, message).await?;
-    }
+    send_turn_and_wait(&mut mcp, &thread_id, "first").await?;
+    send_turn_and_wait(&mut mcp, &thread_id, "second").await?;
+    let third_turn_id = send_turn_and_wait(&mut mcp, &thread_id, "third").await?;
 
     let started = wait_for_context_compaction_started(&mut mcp).await?;
     let completed = wait_for_context_compaction_completed(&mut mcp).await?;
@@ -213,6 +213,8 @@ async fn auto_compaction_remote_emits_started_and_completed_items() -> Result<()
 
     assert_eq!(started.thread_id, thread_id);
     assert_eq!(completed.thread_id, thread_id);
+    assert_eq!(started.turn_id, third_turn_id);
+    assert_eq!(completed.turn_id, third_turn_id);
     assert_eq!(started_id, completed_id);
 
     let compact_requests = compact_mock.requests();
