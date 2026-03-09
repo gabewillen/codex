@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-03-08)
 ## Current Position
 
 Phase: 4 of 5 (Failure Recovery And Blocking Guardrails)
-Plan: 0 of 4 in current phase
-Status: Planned
-Last activity: 2026-03-09 — Planned Phase 4 in four executable plans covering failed background compaction recovery, single-terminal ownership, preserved blocking guardrails, and final regressions
+Plan: 1 of 4 in current phase
+Status: In progress
+Last activity: 2026-03-09 — Completed Wave 1 by making failed background compaction a consumable turn-owned terminal state in core
 
 Progress: [██████░░░░] 60%
 
@@ -30,7 +30,7 @@ Progress: [██████░░░░] 60%
 | 1 | 4/4 | 305 min | 76 min |
 | 2 | 3/3 | 235 min | 78 min |
 | 3 | 3/3 | 83 min | 28 min |
-| 4 | 0/4 | 0 min | - |
+| 4 | 1/4 | 12 min | 12 min |
 | 5 | TBD | 0 min | - |
 
 **Recent Trend:**
@@ -55,7 +55,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- Execute Phase 4 to add failure-triggered blocking fallback while preserving manual and pre-turn compaction semantics.
+- Execute Wave 2 of Phase 4 to add failure-triggered blocking fallback and preserve manual/pre-turn blocking semantics.
 
 ### Blockers/Concerns
 
@@ -64,5 +64,5 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-09 09:18 CDT
-Stopped at: Phase 4 planned; next up is execution
+Stopped at: Phase 4 Wave 1 complete; next up is failure fallback and guardrail preservation
 Resume file: None
