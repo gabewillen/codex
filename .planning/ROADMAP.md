@@ -57,7 +57,7 @@ This first roadmap takes Codex from interrupting automatic compaction to backgro
 2. Each background compaction reaches exactly one terminal outcome: applied, failed-then-fallback, or aborted.
 3. User-triggered manual compaction still behaves as a blocking operation.
 4. Pre-turn protective compaction still behaves as a blocking operation.
-**Plans**: TBD during phase planning
+**Plans**: 4 plans
 
 ### Phase 5: Visible Rolling Background Compaction
 **Goal**: Codex makes background compaction visible below the input and supports multiple concurrent auto-compactions on different transcript ranges.
@@ -80,5 +80,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 1. Background Trigger And Continued Turns | 4/4 | Complete | 2026-03-09 |
 | 2. Safe Transcript Splicing | 3/3 | Complete | 2026-03-09 |
 | 3. Durable History And Surface Compatibility | 3/3 | Complete | 2026-03-09 |
-| 4. Failure Recovery And Blocking Guardrails | 0/TBD | Not started | - |
+| 4. Failure Recovery And Blocking Guardrails | 0/4 | Planned | - |
 | 5. Visible Rolling Background Compaction | 0/TBD | Not started | - |
