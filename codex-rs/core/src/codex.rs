@@ -5658,13 +5658,13 @@ pub(crate) async fn run_turn(
             }
         }
 
-        if apply_completed_background_auto_compact_if_ready(&sess, &turn_context)
-            .await
-            .is_err()
-        {
-            return None;
-        }
-        if recover_failed_background_auto_compact_if_ready(&sess, &turn_context).await {
+        let settled_background_auto_compact =
+            settle_completed_background_auto_compact_if_ready(&sess, &turn_context).await;
+        let should_break_for_background_auto_compact = match settled_background_auto_compact {
+            Ok(should_break) => should_break,
+            Err(_) => return None,
+        };
+        if should_break_for_background_auto_compact {
             break;
         }
 
@@ -5706,13 +5706,14 @@ pub(crate) async fn run_turn(
                     needs_follow_up,
                     last_agent_message: sampling_request_last_agent_message,
                 } = sampling_request_output;
-                if apply_completed_background_auto_compact_if_ready(&sess, &turn_context)
-                    .await
-                    .is_err()
+                let settled_background_auto_compact =
+                    settle_completed_background_auto_compact_if_ready(&sess, &turn_context).await;
+                let should_break_for_background_auto_compact = match settled_background_auto_compact
                 {
-                    return None;
-                }
-                if recover_failed_background_auto_compact_if_ready(&sess, &turn_context).await {
+                    Ok(should_break) => should_break,
+                    Err(_) => return None,
+                };
+                if should_break_for_background_auto_compact {
                     break;
                 }
                 let total_usage_tokens = sess.get_total_token_usage().await;
@@ -5747,10 +5748,15 @@ pub(crate) async fn run_turn(
                 }
 
                 if !needs_follow_up {
-                    if recover_failed_background_auto_compact_before_turn_end(&sess, &turn_context)
-                        .await
+                    match recover_failed_background_auto_compact_before_turn_end(
+                        &sess,
+                        &turn_context,
+                    )
+                    .await
                     {
-                        break;
+                        Ok(true) => break,
+                        Ok(false) => {}
+                        Err(_) => return None,
                     }
                     last_agent_message = sampling_request_last_agent_message;
                     let stop_hook_permission_mode = match turn_context.approval_policy.value() {
@@ -5990,129 +5996,216 @@ async fn run_auto_compact(
     Ok(())
 }
 
-async fn apply_completed_background_auto_compact_if_ready(
+async fn cancel_background_auto_compactions_older_than(
+    sess: &Arc<Session>,
+    turn_context: &Arc<TurnContext>,
+    launch_ordinal: u64,
+) {
+    let background_auto_compactions = {
+        let mut active = sess.active_turn.lock().await;
+        let Some(active_turn) = active.as_mut() else {
+            return;
+        };
+        if !active_turn.tasks.contains_key(&turn_context.sub_id) {
+            return;
+        }
+        let background_auto_compactions =
+            active_turn.take_background_auto_compactions_older_than(launch_ordinal);
+        active_turn.clear_completed_background_auto_compactions_older_than(launch_ordinal);
+        background_auto_compactions
+    };
+    for background_auto_compaction in background_auto_compactions {
+        background_auto_compaction.cancellation_token.cancel();
+        background_auto_compaction.handle.abort();
+    }
+}
+
+async fn cancel_all_background_auto_compactions(
+    sess: &Arc<Session>,
+    turn_context: &Arc<TurnContext>,
+) {
+    let background_auto_compactions = {
+        let mut active = sess.active_turn.lock().await;
+        let Some(active_turn) = active.as_mut() else {
+            return;
+        };
+        if !active_turn.tasks.contains_key(&turn_context.sub_id) {
+            return;
+        }
+        let background_auto_compactions = active_turn.take_all_background_auto_compactions();
+        active_turn.clear_completed_background_auto_compactions();
+        background_auto_compactions
+    };
+    for background_auto_compaction in background_auto_compactions {
+        background_auto_compaction.cancellation_token.cancel();
+        background_auto_compaction.handle.abort();
+    }
+}
+
+async fn settle_completed_background_auto_compact_if_ready(
     sess: &Arc<Session>,
     turn_context: &Arc<TurnContext>,
 ) -> CodexResult<bool> {
-    let completed_background_auto_compaction = {
-        let mut active = sess.active_turn.lock().await;
-        let Some(active_turn) = active.as_mut() else {
+    loop {
+        let completed_background_auto_compaction = {
+            let mut active = sess.active_turn.lock().await;
+            let Some(active_turn) = active.as_mut() else {
+                return Ok(false);
+            };
+            if !active_turn.tasks.contains_key(&turn_context.sub_id) {
+                return Ok(false);
+            }
+            active_turn.take_latest_completed_background_auto_compaction()
+        };
+        let Some(completed_background_auto_compaction) = completed_background_auto_compaction
+        else {
             return Ok(false);
         };
-        if !active_turn.tasks.contains_key(&turn_context.sub_id) {
-            return Ok(false);
+
+        if matches!(
+            &completed_background_auto_compaction.outcome,
+            BackgroundAutoCompactionOutcome::Succeeded(_)
+        ) {
+            let has_newer_background_auto_compactions = {
+                let active = sess.active_turn.lock().await;
+                let Some(active_turn) = active.as_ref() else {
+                    return Ok(false);
+                };
+                if !active_turn.tasks.contains_key(&turn_context.sub_id) {
+                    return Ok(false);
+                }
+                active_turn.has_tracked_background_auto_compaction_newer_than(
+                    completed_background_auto_compaction.launch_ordinal,
+                )
+            };
+            if has_newer_background_auto_compactions {
+                let mut active = sess.active_turn.lock().await;
+                let Some(active_turn) = active.as_mut() else {
+                    return Ok(false);
+                };
+                if !active_turn.tasks.contains_key(&turn_context.sub_id) {
+                    return Ok(false);
+                }
+                active_turn.insert_completed_background_auto_compaction(
+                    completed_background_auto_compaction,
+                );
+                return Ok(false);
+            }
         }
-        active_turn.take_successful_completed_background_auto_compaction()
-    };
-    let Some(completed_background_auto_compaction) = completed_background_auto_compaction else {
-        return Ok(false);
-    };
 
-    let replacement_outcome = match completed_background_auto_compaction.outcome {
-        BackgroundAutoCompactionOutcome::Succeeded(result) => result,
-        BackgroundAutoCompactionOutcome::Failed(_) => return Ok(false),
-    };
-    let (replacement_history, reference_context_item, mut compacted_item) =
-        match *replacement_outcome {
-            BackgroundAutoCompactionResult::Local(result) => (
-                result.replacement_history,
-                result.reference_context_item,
-                result.compacted_item,
-            ),
-            BackgroundAutoCompactionResult::Remote(result) => (
-                result.replacement_history,
-                result.reference_context_item,
-                result.compacted_item,
-            ),
-        };
+        match completed_background_auto_compaction.outcome {
+            BackgroundAutoCompactionOutcome::Succeeded(result) => {
+                let completed_background_auto_compaction_launch_ordinal =
+                    completed_background_auto_compaction.launch_ordinal;
+                let completed_background_auto_compaction_snapshot_history =
+                    completed_background_auto_compaction.snapshot_history;
+                let completed_background_auto_compaction_snapshot_marker =
+                    completed_background_auto_compaction.snapshot_marker;
+                let (replacement_history, reference_context_item, mut compacted_item) =
+                    match *result {
+                        BackgroundAutoCompactionResult::Local(result) => (
+                            result.replacement_history,
+                            result.reference_context_item,
+                            result.compacted_item,
+                        ),
+                        BackgroundAutoCompactionResult::Remote(result) => (
+                            result.replacement_history,
+                            result.reference_context_item,
+                            result.compacted_item,
+                        ),
+                    };
 
-    let live_history = sess.clone_history().await;
-    let Some(spliced_history) = ContextManager::splice_compacted_prefix(
-        live_history.raw_items(),
-        &completed_background_auto_compaction.snapshot_history,
-        &replacement_history,
-    ) else {
-        warn!(
-            turn_id = %turn_context.sub_id,
-            snapshot_marker = %completed_background_auto_compaction.snapshot_marker,
-            "skipping completed background auto compaction because live history diverged from the captured snapshot"
-        );
-        return Ok(false);
-    };
+                let live_history = sess.clone_history().await;
+                let Some(spliced_history) = ContextManager::splice_compacted_prefix(
+                    live_history.raw_items(),
+                    &completed_background_auto_compaction_snapshot_history,
+                    &replacement_history,
+                ) else {
+                    warn!(
+                        turn_id = %turn_context.sub_id,
+                        snapshot_marker = %completed_background_auto_compaction_snapshot_marker,
+                        "skipping completed background auto compaction because live history diverged from the captured snapshot"
+                    );
+                    continue;
+                };
 
-    compacted_item.replacement_history = Some(spliced_history.clone());
-    sess.replace_compacted_history(spliced_history, reference_context_item, compacted_item)
-        .await;
-    sess.recompute_token_usage(turn_context.as_ref()).await;
-    Ok(true)
-}
+                compacted_item.replacement_history = Some(spliced_history.clone());
+                sess.replace_compacted_history(
+                    spliced_history,
+                    reference_context_item,
+                    compacted_item,
+                )
+                .await;
+                sess.recompute_token_usage(turn_context.as_ref()).await;
+                cancel_background_auto_compactions_older_than(
+                    sess,
+                    turn_context,
+                    completed_background_auto_compaction_launch_ordinal,
+                )
+                .await;
+                return Ok(false);
+            }
+            BackgroundAutoCompactionOutcome::Failed(message) => {
+                let has_newer_background_auto_compactions = {
+                    let active = sess.active_turn.lock().await;
+                    let Some(active_turn) = active.as_ref() else {
+                        return Ok(false);
+                    };
+                    if !active_turn.tasks.contains_key(&turn_context.sub_id) {
+                        return Ok(false);
+                    }
+                    active_turn.has_tracked_background_auto_compaction_newer_than(
+                        completed_background_auto_compaction.launch_ordinal,
+                    )
+                };
+                if has_newer_background_auto_compactions {
+                    continue;
+                }
 
-async fn recover_failed_background_auto_compact_if_ready(
-    sess: &Arc<Session>,
-    turn_context: &Arc<TurnContext>,
-) -> bool {
-    let completed_background_auto_compaction = {
-        let mut active = sess.active_turn.lock().await;
-        let Some(active_turn) = active.as_mut() else {
-            return false;
-        };
-        if !active_turn.tasks.contains_key(&turn_context.sub_id) {
-            return false;
+                warn!(
+                    turn_id = %turn_context.sub_id,
+                    snapshot_marker = %completed_background_auto_compaction.snapshot_marker,
+                    error = %message,
+                    "background auto compaction failed; running blocking fallback compaction"
+                );
+                cancel_all_background_auto_compactions(sess, turn_context).await;
+                if let Err(err) = run_auto_compact(
+                    sess,
+                    turn_context,
+                    InitialContextInjection::BeforeLastUserMessage,
+                )
+                .await
+                {
+                    info!("Fallback compact error: {err:#}");
+                    let event = EventMsg::Error(err.to_error_event(None));
+                    sess.send_event(turn_context, event).await;
+                }
+                return Ok(true);
+            }
         }
-        active_turn.take_failed_completed_background_auto_compaction()
-    };
-    let Some(completed_background_auto_compaction) = completed_background_auto_compaction else {
-        return false;
-    };
-
-    let BackgroundAutoCompactionOutcome::Failed(message) =
-        completed_background_auto_compaction.outcome
-    else {
-        return false;
-    };
-
-    warn!(
-        turn_id = %turn_context.sub_id,
-        snapshot_marker = %completed_background_auto_compaction.snapshot_marker,
-        error = %message,
-        "background auto compaction failed; running blocking fallback compaction"
-    );
-
-    if let Err(err) = run_auto_compact(
-        sess,
-        turn_context,
-        InitialContextInjection::BeforeLastUserMessage,
-    )
-    .await
-    {
-        info!("Fallback compact error: {err:#}");
-        let event = EventMsg::Error(err.to_error_event(None));
-        sess.send_event(turn_context, event).await;
     }
-
-    true
 }
 
 async fn recover_failed_background_auto_compact_before_turn_end(
     sess: &Arc<Session>,
     turn_context: &Arc<TurnContext>,
-) -> bool {
-    if recover_failed_background_auto_compact_if_ready(sess, turn_context).await {
-        return true;
+) -> CodexResult<bool> {
+    if settle_completed_background_auto_compact_if_ready(sess, turn_context).await? {
+        return Ok(true);
     }
 
     let background_failure_notifies = {
         let active = sess.active_turn.lock().await;
         let Some(active_turn) = active.as_ref() else {
-            return false;
+            return Ok(false);
         };
         if !active_turn.tasks.contains_key(&turn_context.sub_id) {
-            return false;
+            return Ok(false);
         }
         active_turn.background_auto_compaction_failure_notifies()
     };
     if background_failure_notifies.is_empty() {
-        return false;
+        return Ok(false);
     }
 
     let wait_timeout_ms = if should_use_remote_compact_task(&turn_context.provider) {
@@ -6121,25 +6214,22 @@ async fn recover_failed_background_auto_compact_before_turn_end(
         1_000
     };
 
-    if tokio::time::timeout(
-        tokio::time::Duration::from_millis(wait_timeout_ms),
-        async {
-            let notified_futures = background_failure_notifies
-                .into_iter()
-                .map(|background_failure_notify| {
-                    async move { background_failure_notify.notified().await }.boxed()
-                })
-                .collect::<Vec<_>>();
-            let _ = select_all(notified_futures).await;
-        },
-    )
+    if tokio::time::timeout(tokio::time::Duration::from_millis(wait_timeout_ms), async {
+        let notified_futures = background_failure_notifies
+            .into_iter()
+            .map(|background_failure_notify| {
+                async move { background_failure_notify.notified().await }.boxed()
+            })
+            .collect::<Vec<_>>();
+        let _ = select_all(notified_futures).await;
+    })
     .await
     .is_err()
     {
-        return false;
+        return Ok(false);
     }
 
-    recover_failed_background_auto_compact_if_ready(sess, turn_context).await
+    settle_completed_background_auto_compact_if_ready(sess, turn_context).await
 }
 
 async fn start_background_auto_compact(
