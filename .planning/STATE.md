@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-03-08)
 ## Current Position
 
 Phase: 4 of 5 (Failure Recovery And Blocking Guardrails)
-Plan: 2 of 4 in current phase
+Plan: 3 of 4 in current phase
 Status: In progress
-Last activity: 2026-03-09 — Completed Wave 2 by recovering failed background compactions through the existing blocking path while preserving successful background behavior
+Last activity: 2026-03-09 — Completed Wave 2 by locking manual and pre-turn blocking guardrails while preserving non-blocking successful background compaction
 
-Progress: [███████░░░] 65%
+Progress: [████████░░] 78%
 
 ## Performance Metrics
 
@@ -30,7 +30,7 @@ Progress: [███████░░░] 65%
 | 1 | 4/4 | 305 min | 76 min |
 | 2 | 3/3 | 235 min | 78 min |
 | 3 | 3/3 | 83 min | 28 min |
-| 4 | 2/4 | 50 min | 25 min |
+| 4 | 3/4 | 69 min | 23 min |
 | 5 | TBD | 0 min | - |
 
 **Recent Trend:**
@@ -55,7 +55,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- Execute Wave 2 Plan 03 of Phase 4 to lock manual and pre-turn blocking semantics after failed background recovery.
+- Execute Wave 3 Plan 04 of Phase 4 to add final terminal-outcome and cross-surface regression proof.
 
 ### Blockers/Concerns
 
@@ -63,6 +63,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-03-09 10:08 CDT
-Stopped at: Phase 4 Wave 2 Plan 02 complete; next up is Wave 2 Plan 03 guardrail preservation
+Last session: 2026-03-09 10:27 CDT
+Stopped at: Phase 4 Wave 2 Plan 03 complete; next up is Wave 3 Plan 04 final regression lock-in
 Resume file: None

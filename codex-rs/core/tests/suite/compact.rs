@@ -625,6 +625,7 @@ async fn manual_compact_emits_context_compaction_items() {
     let mut completed_item = None;
     let mut legacy_event = false;
     let mut saw_turn_complete = false;
+    let mut turn_complete_before_item_completed = false;
 
     while !saw_turn_complete || started_item.is_none() || completed_item.is_none() || !legacy_event
     {
@@ -646,6 +647,9 @@ async fn manual_compact_emits_context_compaction_items() {
                 legacy_event = true;
             }
             EventMsg::TurnComplete(_) => {
+                if completed_item.is_none() {
+                    turn_complete_before_item_completed = true;
+                }
                 saw_turn_complete = true;
             }
             _ => {}
@@ -656,6 +660,10 @@ async fn manual_compact_emits_context_compaction_items() {
     let completed_item = completed_item.expect("context compaction item completed");
     assert_eq!(started_item.id, completed_item.id);
     assert!(legacy_event);
+    assert!(
+        !turn_complete_before_item_completed,
+        "manual compaction should remain blocking until the compaction item completes"
+    );
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -3042,12 +3050,19 @@ async fn snapshot_request_shape_pre_turn_compaction_context_window_exceeded() {
         })
         .await
         .expect("submit second user");
-    let error_message = wait_for_event_match(&codex, |event| match event {
-        EventMsg::Error(err) => Some(err.message.clone()),
-        _ => None,
-    })
-    .await;
-    wait_for_event(&codex, |ev| matches!(ev, EventMsg::TurnComplete(_))).await;
+    let mut error_message = None;
+    let mut saw_turn_complete = false;
+    let mut saw_turn_aborted = false;
+    while error_message.is_none() || !saw_turn_complete {
+        let event = codex.next_event().await.expect("next event");
+        match event.msg {
+            EventMsg::Error(err) => error_message = Some(err.message),
+            EventMsg::TurnComplete(_) => saw_turn_complete = true,
+            EventMsg::TurnAborted(_) => saw_turn_aborted = true,
+            _ => {}
+        }
+    }
+    let error_message = error_message.expect("expected compact failure error");
 
     let requests = request_log.requests();
     assert!(
@@ -3069,6 +3084,10 @@ async fn snapshot_request_shape_pre_turn_compaction_context_window_exceeded() {
     assert!(
         error_message.contains("ran out of room in the model's context window"),
         "expected context window exceeded message, got {error_message}"
+    );
+    assert!(
+        !saw_turn_aborted,
+        "pre-turn compaction failure should still end through error + turn completion, not a turn abort marker"
     );
 }
 

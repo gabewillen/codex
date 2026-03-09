@@ -6100,7 +6100,7 @@ async fn recover_failed_background_auto_compact_before_turn_end(
         return true;
     }
 
-    let background_completion = {
+    let background_failure_notify = {
         let active = sess.active_turn.lock().await;
         let Some(active_turn) = active.as_ref() else {
             return false;
@@ -6108,9 +6108,9 @@ async fn recover_failed_background_auto_compact_before_turn_end(
         if !active_turn.tasks.contains_key(&turn_context.sub_id) {
             return false;
         }
-        active_turn.background_auto_compaction_completion()
+        active_turn.background_auto_compaction_failure_notify()
     };
-    let Some(background_completion) = background_completion else {
+    let Some(background_failure_notify) = background_failure_notify else {
         return false;
     };
 
@@ -6122,7 +6122,7 @@ async fn recover_failed_background_auto_compact_before_turn_end(
 
     if tokio::time::timeout(
         tokio::time::Duration::from_millis(wait_timeout_ms),
-        background_completion.notified(),
+        background_failure_notify.notified(),
     )
     .await
     .is_err()
@@ -6144,7 +6144,7 @@ async fn start_background_auto_compact(
     let compaction_item = ContextCompactionItem::new();
     let snapshot_marker = compaction_item.id.clone();
     let background_cancellation_token = cancellation_token.child_token();
-    let background_completion = Arc::new(tokio::sync::Notify::new());
+    let background_failure_notify = Arc::new(tokio::sync::Notify::new());
     let (start_tx, start_rx) = oneshot::channel();
 
     let worker_sess = Arc::clone(sess);
@@ -6152,17 +6152,8 @@ async fn start_background_auto_compact(
     let worker_snapshot_marker = snapshot_marker.clone();
     let worker_compaction_item = compaction_item.clone();
     let worker_cancellation_token = background_cancellation_token.clone();
-    let worker_background_completion = Arc::clone(&background_completion);
+    let worker_background_failure_notify = Arc::clone(&background_failure_notify);
     let handle = tokio::spawn(async move {
-        struct NotifyOnDrop(Arc<tokio::sync::Notify>);
-
-        impl Drop for NotifyOnDrop {
-            fn drop(&mut self) {
-                self.0.notify_waiters();
-            }
-        }
-
-        let _notify_on_drop = NotifyOnDrop(worker_background_completion);
         if start_rx.await.is_err() {
             return;
         }
@@ -6183,6 +6174,7 @@ async fn start_background_auto_compact(
                 if worker_cancellation_token.is_cancelled() {
                     return;
                 }
+                worker_background_failure_notify.notify_waiters();
                 BackgroundAutoCompactionOutcome::Failed(err.to_string())
             }
         };
@@ -6227,7 +6219,7 @@ async fn start_background_auto_compact(
                 snapshot_marker: snapshot_marker.clone(),
                 snapshot_history,
                 compaction_item: worker_compaction_item,
-                completion: background_completion,
+                failure_notify: background_failure_notify,
                 cancellation_token: background_cancellation_token,
                 handle,
             })

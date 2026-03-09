@@ -69,7 +69,7 @@ pub(crate) struct BackgroundAutoCompaction {
     pub(crate) snapshot_marker: String,
     pub(crate) snapshot_history: Vec<ResponseItem>,
     pub(crate) compaction_item: ContextCompactionItem,
-    pub(crate) completion: Arc<Notify>,
+    pub(crate) failure_notify: Arc<Notify>,
     pub(crate) cancellation_token: CancellationToken,
     pub(crate) handle: JoinHandle<()>,
 }
@@ -149,10 +149,10 @@ impl ActiveTurn {
         self.background_auto_compaction.take()
     }
 
-    pub(crate) fn background_auto_compaction_completion(&self) -> Option<Arc<Notify>> {
+    pub(crate) fn background_auto_compaction_failure_notify(&self) -> Option<Arc<Notify>> {
         self.background_auto_compaction
             .as_ref()
-            .map(|background_auto_compaction| Arc::clone(&background_auto_compaction.completion))
+            .map(|background_auto_compaction| Arc::clone(&background_auto_compaction.failure_notify))
     }
 
     pub(crate) fn take_completed_background_auto_compaction(
