@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-03-08)
 ## Current Position
 
 Phase: 5 of 5 (Visible Rolling Background Compaction)
-Plan: 1 of 4 in current phase
-Status: In progress
-Last activity: 2026-03-09 — Completed Plan 05-01 with rolling job tracking, distinct-range launch gating, and ordered completed background jobs in core
+Plan: 4 of 4 in current phase
+Status: Complete
+Last activity: 2026-03-09 — Completed Plans 05-02, 05-03, and 05-04 with deterministic rolling settlement, a below-input compaction indicator, and final app-server/docs validation
 
-Progress: [██████████] 82%
+Progress: [████████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 8
-- Average duration: 66 min
-- Total execution time: 6.0 hours
+- Total plans completed: 11
+- Average duration: 51 min
+- Total execution time: 6.4 hours
 
 **By Phase:**
 
@@ -31,11 +31,11 @@ Progress: [██████████] 82%
 | 2 | 3/3 | 235 min | 78 min |
 | 3 | 3/3 | 83 min | 28 min |
 | 4 | 4/4 | 77 min | 19 min |
-| 5 | 0/4 | 0 min | - |
+| 5 | 4/4 | 60 min | 15 min |
 
 **Recent Trend:**
-- Last 5 plans: 35m, 28m, 20m, 65m, 65m
-- Trend: Stable after Phase 3 shifted from runtime changes to compatibility lock-in
+- Last 5 plans: 65m, 65m, 10m, 8m, 6m
+- Trend: Faster as the work narrowed from core orchestration to UI and compatibility lock-in
 
 ## Accumulated Context
 
@@ -55,14 +55,14 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- Execute Phase 5 to add the visible background indicator and overlapping rolling compaction behavior.
+- Archive or audit the completed milestone and decide whether follow-up polish belongs in a new milestone.
 
 ### Blockers/Concerns
 
-- Full workspace `cargo test` has not been rerun; the project continues to use the repo-required scoped crate suites plus scoped clippy/format passes.
+- Full workspace `cargo test` has not been rerun; the project still uses the repo-required scoped crate suites plus scoped clippy/format passes.
 
 ## Session Continuity
 
 Last session: 2026-03-09 10:35 CDT
-Stopped at: Phase 5 planned; next up is Phase 5 execution
+Stopped at: Phase 5 execution completed; next up is milestone closeout or follow-up planning
 Resume file: None
