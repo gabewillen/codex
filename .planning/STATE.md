@@ -9,10 +9,10 @@ See: .planning/PROJECT.md (updated 2026-03-08)
 
 ## Current Position
 
-Phase: 3 of 5 (Durable History And Surface Compatibility)
-Plan: 3 of 3 in current phase
-Status: Complete
-Last activity: 2026-03-09 — Completed Wave 3 by locking durable compaction compatibility behind protocol and app-server read/resume/rollback regression coverage
+Phase: 4 of 5 (Failure Recovery And Blocking Guardrails)
+Plan: 0 of 4 in current phase
+Status: Planned
+Last activity: 2026-03-09 — Planned Phase 4 in four executable plans covering failed background compaction recovery, single-terminal ownership, preserved blocking guardrails, and final regressions
 
 Progress: [██████░░░░] 60%
 
@@ -30,7 +30,7 @@ Progress: [██████░░░░] 60%
 | 1 | 4/4 | 305 min | 76 min |
 | 2 | 3/3 | 235 min | 78 min |
 | 3 | 3/3 | 83 min | 28 min |
-| 4 | TBD | 0 min | - |
+| 4 | 0/4 | 0 min | - |
 | 5 | TBD | 0 min | - |
 
 **Recent Trend:**
@@ -55,7 +55,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- Plan Phase 4 to define failure recovery, fallback interruption, and blocking guardrail work on top of the now-proven durable history surfaces.
+- Execute Phase 4 to add failure-triggered blocking fallback while preserving manual and pre-turn compaction semantics.
 
 ### Blockers/Concerns
 
@@ -63,6 +63,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-03-09 15:54 CDT
-Stopped at: Phase 3 complete; next up is Phase 4 planning
+Last session: 2026-03-09 09:18 CDT
+Stopped at: Phase 4 planned; next up is execution
 Resume file: None
