@@ -1,8 +1,8 @@
 //! Turn-scoped state and active turn metadata scaffolding.
 
 use indexmap::IndexMap;
-use std::collections::VecDeque;
 use std::collections::HashMap;
+use std::collections::VecDeque;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::sync::Notify;
@@ -127,17 +127,15 @@ impl ActiveTurn {
         self.background_auto_compactions
             .iter()
             .map(|background_auto_compaction| background_auto_compaction.snapshot_history_len)
-            .chain(
-                self.completed_background_auto_compactions
-                    .iter()
-                    .map(|completed_background_auto_compaction| {
-                        completed_background_auto_compaction.snapshot_history_len
-                    }),
-            )
+            .chain(self.completed_background_auto_compactions.iter().map(
+                |completed_background_auto_compaction| {
+                    completed_background_auto_compaction.snapshot_history_len
+                },
+            ))
             .max()
     }
 
-    fn insert_completed_background_auto_compaction(
+    pub(crate) fn insert_completed_background_auto_compaction(
         &mut self,
         completed_background_auto_compaction: CompletedBackgroundAutoCompaction,
     ) {
@@ -157,7 +155,8 @@ impl ActiveTurn {
         &mut self,
         background_auto_compaction: BackgroundAutoCompaction,
     ) -> bool {
-        if !self.can_start_background_auto_compaction(background_auto_compaction.snapshot_history_len)
+        if !self
+            .can_start_background_auto_compaction(background_auto_compaction.snapshot_history_len)
         {
             return false;
         }
@@ -171,12 +170,12 @@ impl ActiveTurn {
         snapshot_marker: &str,
         outcome: BackgroundAutoCompactionOutcome,
     ) -> Option<ContextCompactionItem> {
-        let background_auto_compaction_index = self
-            .background_auto_compactions
-            .iter()
-            .position(|background_auto_compaction| {
-                background_auto_compaction.snapshot_marker == snapshot_marker
-            })?;
+        let background_auto_compaction_index =
+            self.background_auto_compactions
+                .iter()
+                .position(|background_auto_compaction| {
+                    background_auto_compaction.snapshot_marker == snapshot_marker
+                })?;
         let background_auto_compaction = self
             .background_auto_compactions
             .swap_remove(background_auto_compaction_index);
@@ -197,12 +196,12 @@ impl ActiveTurn {
         &mut self,
         snapshot_marker: &str,
     ) -> Option<BackgroundAutoCompaction> {
-        let background_auto_compaction_index = self
-            .background_auto_compactions
-            .iter()
-            .position(|background_auto_compaction| {
-                background_auto_compaction.snapshot_marker == snapshot_marker
-            })?;
+        let background_auto_compaction_index =
+            self.background_auto_compactions
+                .iter()
+                .position(|background_auto_compaction| {
+                    background_auto_compaction.snapshot_marker == snapshot_marker
+                })?;
         Some(
             self.background_auto_compactions
                 .swap_remove(background_auto_compaction_index),
@@ -228,6 +227,56 @@ impl ActiveTurn {
         self.completed_background_auto_compactions.pop_front()
     }
 
+    pub(crate) fn take_latest_completed_background_auto_compaction(
+        &mut self,
+    ) -> Option<CompletedBackgroundAutoCompaction> {
+        self.completed_background_auto_compactions.pop_back()
+    }
+
+    pub(crate) fn has_tracked_background_auto_compaction_newer_than(
+        &self,
+        launch_ordinal: u64,
+    ) -> bool {
+        self.background_auto_compactions
+            .iter()
+            .any(|background_auto_compaction| {
+                background_auto_compaction.launch_ordinal > launch_ordinal
+            })
+            || self.completed_background_auto_compactions.iter().any(
+                |completed_background_auto_compaction| {
+                    completed_background_auto_compaction.launch_ordinal > launch_ordinal
+                },
+            )
+    }
+
+    pub(crate) fn take_background_auto_compactions_older_than(
+        &mut self,
+        launch_ordinal: u64,
+    ) -> Vec<BackgroundAutoCompaction> {
+        let mut older_background_auto_compactions = Vec::new();
+        let mut retained_background_auto_compactions = Vec::new();
+        for background_auto_compaction in self.background_auto_compactions.drain(..) {
+            if background_auto_compaction.launch_ordinal < launch_ordinal {
+                older_background_auto_compactions.push(background_auto_compaction);
+            } else {
+                retained_background_auto_compactions.push(background_auto_compaction);
+            }
+        }
+        self.background_auto_compactions = retained_background_auto_compactions;
+        older_background_auto_compactions
+    }
+
+    pub(crate) fn clear_completed_background_auto_compactions_older_than(
+        &mut self,
+        launch_ordinal: u64,
+    ) {
+        self.completed_background_auto_compactions
+            .retain(|completed_background_auto_compaction| {
+                completed_background_auto_compaction.launch_ordinal >= launch_ordinal
+            });
+    }
+
+    #[cfg(test)]
     pub(crate) fn take_successful_completed_background_auto_compaction(
         &mut self,
     ) -> Option<CompletedBackgroundAutoCompaction> {
@@ -247,6 +296,7 @@ impl ActiveTurn {
             .remove(successful_completed_background_auto_compaction_index)
     }
 
+    #[cfg(test)]
     pub(crate) fn take_failed_completed_background_auto_compaction(
         &mut self,
     ) -> Option<CompletedBackgroundAutoCompaction> {
