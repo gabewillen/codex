@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-03-08)
 ## Current Position
 
 Phase: 5 of 5 (Visible Rolling Background Compaction)
-Plan: 0 of TBD in current phase
-Status: Ready to plan
-Last activity: 2026-03-09 — Completed Phase 4 with final terminal-outcome regression coverage and passing core/app-server compaction suites
+Plan: 0 of 4 in current phase
+Status: Planned
+Last activity: 2026-03-09 — Planned Phase 5 with rolling overlap, footer indicator, and cross-surface regression work split into 4 plans
 
 Progress: [██████████] 82%
 
@@ -31,7 +31,7 @@ Progress: [██████████] 82%
 | 2 | 3/3 | 235 min | 78 min |
 | 3 | 3/3 | 83 min | 28 min |
 | 4 | 4/4 | 77 min | 19 min |
-| 5 | TBD | 0 min | - |
+| 5 | 0/4 | 0 min | - |
 
 **Recent Trend:**
 - Last 5 plans: 35m, 28m, 20m, 65m, 65m
@@ -55,7 +55,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- Plan Phase 5 to add the visible background indicator and overlapping rolling compaction behavior.
+- Execute Phase 5 to add the visible background indicator and overlapping rolling compaction behavior.
 
 ### Blockers/Concerns
 
@@ -64,5 +64,5 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-03-09 10:35 CDT
-Stopped at: Phase 4 complete; next up is Phase 5 planning
+Stopped at: Phase 5 planned; next up is Phase 5 execution
 Resume file: None
