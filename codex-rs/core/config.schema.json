@@ -504,6 +504,9 @@
           },
           "type": "object"
         },
+        "history_context_mode": {
+          "$ref": "#/definitions/HistoryContextMode"
+        },
         "include_apply_patch_tool": {
           "type": "boolean"
         },
@@ -709,6 +712,13 @@
         "persistence"
       ],
       "type": "object"
+    },
+    "HistoryContextMode": {
+      "enum": [
+        "compaction",
+        "scrolling_window"
+      ],
+      "type": "string"
     },
     "HistoryPersistence": {
       "oneOf": [
@@ -2096,6 +2106,14 @@
       ],
       "default": null,
       "description": "Settings that govern if and what will be written to `~/.codex/history.jsonl`."
+    },
+    "history_context_mode": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/HistoryContextMode"
+        }
+      ],
+      "description": "Strategy for fitting conversation history into the model context window."
     },
     "instructions": {
       "description": "System instructions.",

@@ -795,6 +795,13 @@
       ],
       "type": "string"
     },
+    "HistoryContextMode": {
+      "enum": [
+        "compaction",
+        "scrolling_window"
+      ],
+      "type": "string"
+    },
     "ImageDetail": {
       "enum": [
         "auto",
@@ -2378,6 +2385,16 @@
         "ephemeral": {
           "type": "boolean"
         },
+        "historyContextMode": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/HistoryContextMode"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "model": {
           "description": "Configuration overrides for the forked thread, if any.",
           "type": [
@@ -2655,6 +2672,16 @@
             "null"
           ]
         },
+        "historyContextMode": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/HistoryContextMode"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "model": {
           "description": "Configuration overrides for the resumed thread, if any.",
           "type": [
@@ -2810,6 +2837,16 @@
           "type": [
             "boolean",
             "null"
+          ]
+        },
+        "historyContextMode": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/HistoryContextMode"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "model": {

@@ -1,6 +1,7 @@
 pub(crate) mod agent_jobs;
 pub mod apply_patch;
 mod artifacts;
+mod conversation_history;
 mod dynamic;
 mod grep_files;
 mod js_repl;
@@ -37,6 +38,8 @@ pub use apply_patch::ApplyPatchHandler;
 pub use artifacts::ArtifactsHandler;
 use codex_protocol::models::PermissionProfile;
 use codex_protocol::protocol::AskForApproval;
+pub(crate) use conversation_history::CONVERSATION_HISTORY_TOOL_NAME;
+pub use conversation_history::ConversationHistoryHandler;
 pub use dynamic::DynamicToolHandler;
 pub use grep_files::GrepFilesHandler;
 pub use js_repl::JsReplHandler;

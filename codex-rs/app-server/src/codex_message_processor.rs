@@ -1842,6 +1842,7 @@ impl CodexMessageProcessor {
         let ThreadStartParams {
             model,
             model_provider,
+            history_context_mode,
             service_tier,
             cwd,
             approval_policy,
@@ -1860,6 +1861,7 @@ impl CodexMessageProcessor {
         let mut typesafe_overrides = self.build_thread_config_overrides(
             model,
             model_provider,
+            history_context_mode,
             service_tier,
             cwd,
             approval_policy,
@@ -2058,6 +2060,7 @@ impl CodexMessageProcessor {
                     model: config_snapshot.model,
                     model_provider: config_snapshot.model_provider_id,
                     service_tier: config_snapshot.service_tier,
+                    history_context_mode: config_snapshot.history_context_mode,
                     cwd: config_snapshot.cwd,
                     approval_policy: config_snapshot.approval_policy.into(),
                     sandbox: config_snapshot.sandbox_policy.into(),
@@ -2094,6 +2097,7 @@ impl CodexMessageProcessor {
         &self,
         model: Option<String>,
         model_provider: Option<String>,
+        history_context_mode: Option<codex_protocol::config_types::HistoryContextMode>,
         service_tier: Option<Option<codex_protocol::config_types::ServiceTier>>,
         cwd: Option<String>,
         approval_policy: Option<codex_app_server_protocol::AskForApproval>,
@@ -2105,6 +2109,7 @@ impl CodexMessageProcessor {
         ConfigOverrides {
             model,
             model_provider,
+            history_context_mode,
             service_tier,
             cwd: cwd.map(PathBuf::from),
             approval_policy: approval_policy
@@ -3313,6 +3318,7 @@ impl CodexMessageProcessor {
             path,
             model,
             model_provider,
+            history_context_mode,
             service_tier,
             cwd,
             approval_policy,
@@ -3346,6 +3352,7 @@ impl CodexMessageProcessor {
         let typesafe_overrides = self.build_thread_config_overrides(
             model,
             model_provider,
+            history_context_mode,
             service_tier,
             cwd,
             approval_policy,
@@ -3375,6 +3382,7 @@ impl CodexMessageProcessor {
         };
 
         let fallback_model_provider = config.model_provider_id.clone();
+        let history_context_mode = config.history_context_mode;
         let response_history = thread_history.clone();
 
         match self
@@ -3446,6 +3454,7 @@ impl CodexMessageProcessor {
                     model: session_configured.model,
                     model_provider: session_configured.model_provider_id,
                     service_tier: session_configured.service_tier,
+                    history_context_mode,
                     cwd: session_configured.cwd,
                     approval_policy: session_configured.approval_policy.into(),
                     sandbox: session_configured.sandbox_policy.into(),
@@ -3784,6 +3793,7 @@ impl CodexMessageProcessor {
             path,
             model,
             model_provider,
+            history_context_mode,
             service_tier,
             cwd,
             approval_policy,
@@ -3865,6 +3875,7 @@ impl CodexMessageProcessor {
         let mut typesafe_overrides = self.build_thread_config_overrides(
             model,
             model_provider,
+            history_context_mode,
             service_tier,
             cwd,
             approval_policy,
@@ -3895,6 +3906,7 @@ impl CodexMessageProcessor {
         };
 
         let fallback_model_provider = config.model_provider_id.clone();
+        let history_context_mode = config.history_context_mode;
 
         let NewThread {
             thread_id,
@@ -4034,6 +4046,7 @@ impl CodexMessageProcessor {
             model: session_configured.model,
             model_provider: session_configured.model_provider_id,
             service_tier: session_configured.service_tier,
+            history_context_mode,
             cwd: session_configured.cwd,
             approval_policy: session_configured.approval_policy.into(),
             sandbox: session_configured.sandbox_policy.into(),
@@ -7147,6 +7160,7 @@ async fn handle_pending_thread_resume_request(
         model,
         model_provider_id,
         service_tier,
+        history_context_mode,
         approval_policy,
         sandbox_policy,
         cwd,
@@ -7158,6 +7172,7 @@ async fn handle_pending_thread_resume_request(
         model,
         model_provider: model_provider_id,
         service_tier,
+        history_context_mode,
         cwd,
         approval_policy: approval_policy.into(),
         sandbox: sandbox_policy.into(),
@@ -7278,6 +7293,14 @@ fn collect_resume_override_mismatches(
         mismatch_details.push(format!(
             "service_tier requested={requested_service_tier:?} active={:?}",
             config_snapshot.service_tier
+        ));
+    }
+    if let Some(requested_history_context_mode) = request.history_context_mode
+        && requested_history_context_mode != config_snapshot.history_context_mode
+    {
+        mismatch_details.push(format!(
+            "history_context_mode requested={requested_history_context_mode:?} active={:?}",
+            config_snapshot.history_context_mode
         ));
     }
     if let Some(requested_cwd) = request.cwd.as_deref() {
@@ -8200,6 +8223,7 @@ mod tests {
             path: None,
             model: None,
             model_provider: None,
+            history_context_mode: None,
             service_tier: Some(Some(codex_protocol::config_types::ServiceTier::Fast)),
             cwd: None,
             approval_policy: None,
@@ -8220,6 +8244,7 @@ mod tests {
             ephemeral: false,
             reasoning_effort: None,
             personality: None,
+            history_context_mode: codex_protocol::config_types::HistoryContextMode::Compaction,
             session_source: SessionSource::Cli,
         };
 

@@ -26,6 +26,7 @@ use codex_app_server_protocol::TurnStatus;
 use codex_app_server_protocol::UserInput;
 use codex_core::auth::AuthCredentialsStoreMode;
 use codex_core::auth::REFRESH_TOKEN_URL_OVERRIDE_ENV_VAR;
+use codex_protocol::config_types::HistoryContextMode;
 use pretty_assertions::assert_eq;
 use serde_json::Value;
 use serde_json::json;
@@ -314,7 +315,50 @@ async fn thread_fork_surfaces_cloud_requirements_load_errors() -> Result<()> {
             "detail": "Your access token could not be refreshed because your refresh token was revoked. Please log out and sign in again.",
         }))
     );
+    Ok(())
+}
 
+#[tokio::test]
+async fn thread_fork_accepts_history_context_mode_override() -> Result<()> {
+    let server = create_mock_responses_server_repeating_assistant("Done").await;
+    let codex_home = TempDir::new()?;
+    create_config_toml(codex_home.path(), &server.uri())?;
+
+    let conversation_id = create_fake_rollout(
+        codex_home.path(),
+        "2025-01-05T12-00-00",
+        "2025-01-05T12:00:00Z",
+        "Saved user message",
+        Some("mock_provider"),
+        None,
+    )?;
+
+    let mut mcp = McpProcess::new(codex_home.path()).await?;
+    timeout(DEFAULT_READ_TIMEOUT, mcp.initialize()).await??;
+
+    let fork_id = mcp
+        .send_thread_fork_request(ThreadForkParams {
+            thread_id: conversation_id,
+            history_context_mode: Some(HistoryContextMode::ScrollingWindow),
+            ..Default::default()
+        })
+        .await?;
+    let fork_resp: JSONRPCResponse = timeout(
+        DEFAULT_READ_TIMEOUT,
+        mcp.read_stream_until_response_message(RequestId::Integer(fork_id)),
+    )
+    .await??;
+    let fork_result = fork_resp.result.clone();
+    let ThreadForkResponse {
+        history_context_mode,
+        ..
+    } = to_response::<ThreadForkResponse>(fork_resp)?;
+
+    assert_eq!(history_context_mode, HistoryContextMode::ScrollingWindow);
+    assert_eq!(
+        fork_result.get("historyContextMode"),
+        Some(&Value::String("scrolling_window".to_string()))
+    );
     Ok(())
 }
 

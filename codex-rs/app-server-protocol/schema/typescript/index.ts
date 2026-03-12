@@ -32,6 +32,7 @@ export type { GhostCommit } from "./GhostCommit";
 export type { GitDiffToRemoteParams } from "./GitDiffToRemoteParams";
 export type { GitDiffToRemoteResponse } from "./GitDiffToRemoteResponse";
 export type { GitSha } from "./GitSha";
+export type { HistoryContextMode } from "./HistoryContextMode";
 export type { ImageDetail } from "./ImageDetail";
 export type { InitializeCapabilities } from "./InitializeCapabilities";
 export type { InitializeParams } from "./InitializeParams";
