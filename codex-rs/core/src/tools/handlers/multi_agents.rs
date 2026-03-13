@@ -150,19 +150,6 @@ mod spawn {
                 "Agent depth limit reached. Solve the task yourself.".to_string(),
             ));
         }
-        session
-            .send_event(
-                &turn,
-                CollabAgentSpawnBeginEvent {
-                    call_id: call_id.clone(),
-                    sender_thread_id: session.conversation_id,
-                    prompt: prompt.clone(),
-                    model: args.model.clone().unwrap_or_default(),
-                    reasoning_effort: args.reasoning_effort.unwrap_or_default(),
-                }
-                .into(),
-            )
-            .await;
         let mut config =
             build_agent_spawn_config(&session.get_base_instructions().await, turn.as_ref())?;
         apply_requested_spawn_agent_model_overrides(
@@ -178,6 +165,19 @@ mod spawn {
             .map_err(FunctionCallError::RespondToModel)?;
         apply_spawn_agent_runtime_overrides(&mut config, turn.as_ref())?;
         apply_spawn_agent_overrides(&mut config, child_depth);
+        session
+            .send_event(
+                &turn,
+                CollabAgentSpawnBeginEvent {
+                    call_id: call_id.clone(),
+                    sender_thread_id: session.conversation_id,
+                    prompt: prompt.clone(),
+                    model: config.model.clone().unwrap_or_default(),
+                    reasoning_effort: config.model_reasoning_effort.unwrap_or_default(),
+                }
+                .into(),
+            )
+            .await;
 
         let result = session
             .services
